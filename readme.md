@@ -1,0 +1,1 @@
+Example of system resources control in GOLANG using CGROUPS. You don't need docker for everything.
