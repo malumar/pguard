@@ -111,7 +111,9 @@ func handleEvent(event inotify.Event, watcher *inotify.Watcher) {
 
 func runServer() {
 	addr := getSocketAddress()
-	os.Mkdir(usersPath, 0755)
+	if err := os.Mkdir(usersPath, 0755); err != nil {
+		slog.Error("Failed to create directory", "err", err)
+	}
 	setupCgroupConfig()
 
 	listener, err := net.Listen(protocol, addr)
@@ -161,7 +163,9 @@ func setupCgroupConfig() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	conn.SetReadDeadline(time.Now().Add(connectionDeadLineInSeconds * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(connectionDeadLineInSeconds * time.Second)); err != nil {
+		slog.Error("can't SetReadDeadline", "err", err, "seconds", connectionDeadLineInSeconds)
+	}
 
 	buf := make([]byte, 512)
 	n, err := conn.Read(buf)
@@ -255,8 +259,12 @@ func cleanupAllSubgroups(watcher *inotify.Watcher, userSlice string) {
 
 func cleanupSubgroup(path string, watcher *inotify.Watcher) {
 	if !processExists(filepath.Join(path, "cgroup.events")) {
-		watcher.Remove(path)
-		os.Remove(path)
+		if err := watcher.Remove(path); err != nil {
+			slog.Error("watcher remove", "path", path, "err", err)
+		}
+		if err := os.Remove(path); err != nil {
+			slog.Error("can't remove watcher path", "path", path, "err", err)
+		}
 	}
 }
 
